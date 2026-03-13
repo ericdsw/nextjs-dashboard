@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import postgres from 'postgres';
 import { redirect } from 'next/navigation';
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
 
 export type State = {
   errors?: {
@@ -38,7 +40,7 @@ const UpdateInvoice = FormSchema.omit({id: true, date: true});
 
 // Actions
 
-export async function createInvoice(prevState: State, formData: FormData) {
+export async function createInvoice(_prevState: State, formData: FormData) {
   const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -70,7 +72,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
   redirect('/dashboard/invoices');
 }
 
-export async function updateInvoice(id: string, prevState: State, formData: FormData): Promise<State> {
+export async function updateInvoice(id: string, _prevState: State, formData: FormData): Promise<State> {
   const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -114,3 +116,19 @@ export async function deleteInvoice(id: string) {
   revalidatePath('/dashboard/invoices');
 }
 
+
+export async function authenticate(_prevState: String | undefined, formData: FormData) {
+  try {
+    await signIn('credentials', formData);
+  } catch (e) {
+    if (e instanceof AuthError) {
+      switch (e.type) {
+        case 'CredentialsSignin':
+          return 'Invalid Credentials.'
+        default:
+          return 'Something Went Wrong.'
+      }
+    }
+    throw e;
+  }
+}
